@@ -195,11 +195,21 @@ def classify_event(event, request_date, home_ccy, fx_index):
 
 
 def detect_recurring(history_infos):
-    """Group settled history by category; flag only with >=2 occurrences."""
+    """Group settled DEBIT history by category; flag only with >=2 occurrences.
+
+    Credits (salary, refunds, arrears) never recur generically here --
+    salary is projected separately each month (see forecast.project_salary).
+    Cadence uses all history dates (median interval), not just the last 3.
+    """
     by_cat = defaultdict(list)
     for h in history_infos:
-        if h["cash_role"] == "history" and h["converted_amount"] is not None:
-            by_cat[h["category"]].append(h)
+        if h["cash_role"] != "history":
+            continue
+        if h["direction"] != "debit":
+            continue
+        if h["converted_amount"] is None:
+            continue
+        by_cat[h["category"]].append(h)
     recurring = {}
     for cat, items in sorted(by_cat.items()):
         if len(items) >= 2:
@@ -209,9 +219,50 @@ def detect_recurring(history_infos):
                 "count": len(items),
                 "avg_amount": round(sum(amounts) / len(amounts), 2),
                 "last_3_dates": dates[-3:],
+                "all_dates": dates,
                 "event_ids": [i["event_id"] for i in items[-5:]],
             }
     return recurring
+
+
+def _salary_keywords_ok(raw):
+    text = f"{raw.get('event_type','')} {raw.get('category','')} {raw.get('description','')}".lower()
+    if "salary" not in text and "payroll" not in text:
+        return False
+    for bad in ("arrears", "adjustment", "bonus", "back pay", "backpay", "one-time", "one time",
+                "reversal"):
+        if bad in text:
+            return False
+    return True
+
+
+def _extract_salary_info(raw_events, by_classified, request_date, pick):
+    """Pick regular salary rows (raw description-aware). pick='history'|'future'."""
+    out = []
+    for raw in raw_events:
+        status = (raw.get("status") or "").strip()
+        direction = (raw.get("direction") or "").strip()
+        if direction != "credit" or not _salary_keywords_ok(raw):
+            continue
+        settle = parse_date(raw.get("settlement_date"))
+        if settle is None:
+            continue
+        if pick == "history" and not (status == "settled" and settle < request_date):
+            continue
+        if pick == "future" and not (settle >= request_date and status in ("scheduled", "settled")):
+            continue
+        cls = by_classified.get(raw.get("event_id"), {})
+        if cls.get("converted_amount") is None:
+            continue
+        out.append({
+            "event_id": raw.get("event_id"),
+            "settlement_date": raw.get("settlement_date"),
+            "converted_amount": cls["converted_amount"],
+            "description": raw.get("description"),
+        }
+        )
+    out.sort(key=lambda x: x["settlement_date"])
+    return out
 
 
 def build_request_state(request, profiles_by_user, events_by_user,
@@ -247,6 +298,10 @@ def build_request_state(request, profiles_by_user, events_by_user,
             })
 
     recurring = detect_recurring(history)
+
+    # Regular-salary series (raw description-aware): monthly anchor + amount.
+    salary_history = _extract_salary_info(raw_events, by_id, request_date, "history")
+    scheduled_salary = _extract_salary_info(raw_events, by_id, request_date, "future")
 
     # Flexible future obligations adjustable later (decision step uses these).
     adjustable = [
@@ -348,6 +403,8 @@ def build_request_state(request, profiles_by_user, events_by_user,
         "blank_amount_events": missing,
         "linked_pairs": linked_pairs,
         "recurring_candidates": recurring,
+        "salary_history": salary_history,
+        "scheduled_salary": scheduled_salary,
         "messages": rel_messages,
         "images": rel_images,
     }
@@ -378,6 +435,10 @@ def summarize_state(s):
         lines.append(f"    FUTURE+  {c['event_id']} {c['category']} {c['converted_amount']} on {c['settlement_date']}")
     for c in s["blank_amount_events"][:3]:
         lines.append(f"    BLANK   {c['event_id']} needs_image={c.get('linked_image')} exists={c.get('linked_image_exists')}")
+    if s.get("salary_history") or s.get("scheduled_salary"):
+        hist = ", ".join(f"{x['settlement_date']}:{x['converted_amount']}" for x in (s.get("salary_history") or [])[-3:])
+        fut = ", ".join(f"{x['settlement_date']}:{x['converted_amount']}" for x in (s.get("scheduled_salary") or [])[:3])
+        lines.append(f"    SALARY  hist=[{hist}] sched=[{fut}]")
     top_rec = list(s["recurring_candidates"].items())[:4]
     for cat, r in top_rec:
         lines.append(f"    RECUR   {cat} x{r['count']} avg={r['avg_amount']}")
