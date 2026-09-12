@@ -99,13 +99,26 @@ def is_unconfirmed_credit(event):
     return any(k in text for k in UNCONFIRMED_CREDIT_KEYWORDS)
 
 
-def classify_event(event, request_date, home_ccy, fx_index):
-    """Classify one event row relative to a request. Returns a dict."""
+def classify_event(event, request_date, home_ccy, fx_index, ocr_amounts=None):
+    """Classify one event row relative to a request. Returns a dict.
+
+    ocr_amounts: optional {event_id: {"amount": float, "confidence": float,
+    "label": str}} from the runtime OCR reader for blank-amount events.
+    """
     status = (event.get("status") or "").strip()
     direction = (event.get("direction") or "").strip()
     settle = parse_date(event.get("settlement_date"))
     raw_amount = parse_amount(event.get("amount"))
     ccy = (event.get("currency") or "").strip() or home_ccy
+    ocr_meta = None
+    if raw_amount is None and ocr_amounts and event.get("event_id") in ocr_amounts:
+        hit = ocr_amounts[event.get("event_id")]
+        try:
+            raw_amount = float(hit["amount"])
+            ocr_meta = {"confidence": hit.get("confidence"),
+                        "label": hit.get("label")}
+        except (TypeError, ValueError, KeyError):
+            raw_amount = None
 
     info = {
         "event_id": event.get("event_id"),
@@ -119,7 +132,10 @@ def classify_event(event, request_date, home_ccy, fx_index):
         "settlement_date": event.get("settlement_date"),
         "flexibility": (event.get("flexibility") or "").strip(),
         "linked_event_id": (event.get("linked_event_id") or "").strip(),
-        "amount_missing": raw_amount is None,
+        "amount_missing": raw_amount is None and ocr_meta is None,
+        "ocr_used": ocr_meta is not None,
+        "ocr_confidence": (ocr_meta or {}).get("confidence"),
+        "ocr_label": (ocr_meta or {}).get("label"),
         "converted_amount": None,
         "fx_note": None,
         "cash_role": "excluded",
@@ -266,8 +282,14 @@ def _extract_salary_info(raw_events, by_classified, request_date, pick):
 
 
 def build_request_state(request, profiles_by_user, events_by_user,
-                        options_by_request, messages, images, fx_index):
-    """Build the financial picture for one request. No forecasting here."""
+                        options_by_request, messages, images, fx_index,
+                        ocr_resolver=None):
+    """Build the financial picture for one request. No forecasting here.
+
+    ocr_resolver: optional callable
+        (image_path, event_currency, event_category) -> {"status": ...}
+    called lazily, only for blank-amount events with a linked image.
+    """
     user_id = request["user_id"]
     request_id = request["request_id"]
     request_date = parse_date(request["request_date"])
@@ -275,7 +297,42 @@ def build_request_state(request, profiles_by_user, events_by_user,
     home_ccy = (profile.get("home_currency") or "").strip()
 
     raw_events = events_by_user.get(user_id, [])
-    classified = [classify_event(e, request_date, home_ccy, fx_index) for e in raw_events]
+    img_by_event_pre = {}
+    for im in images:
+        if im.get("user_id") == user_id and (im.get("related_event_id") or "").strip():
+            img_by_event_pre[(im.get("related_event_id") or "").strip()] = im
+
+    # Lazy OCR: only blank events with a linked image are read, only now.
+    ocr_amounts = {}
+    ocr_reports = []
+    if ocr_resolver is not None:
+        for e in raw_events:
+            if (e.get("amount") or "").strip():
+                continue
+            im = img_by_event_pre.get((e.get("event_id") or "").strip())
+            if im is None:
+                continue
+            path = os.path.join(DATASET_DIR, "media", "images",
+                                f"{im.get('image_id')}.png")
+            if not os.path.exists(path):
+                continue
+            try:
+                res = ocr_resolver(path, (e.get("currency") or "").strip() or home_ccy,
+                                   (e.get("category") or "").strip())
+            except Exception as exc:
+                res = {"status": "unclear", "reason": f"resolver_error: {exc}"}
+            ocr_reports.append({"event_id": e.get("event_id"),
+                                "image_id": im.get("image_id"),
+                                "result": res.get("status"),
+                                "amount": res.get("amount"),
+                                "reason": res.get("reason"),
+                                "label": res.get("label"),
+                                "confidence": res.get("confidence")})
+            if res.get("status") == "ok" and res.get("amount") is not None:
+                ocr_amounts[e.get("event_id")] = res
+
+    classified = [classify_event(e, request_date, home_ccy, fx_index, ocr_amounts)
+                  for e in raw_events]
 
     reserved = [c for c in classified if c["cash_role"] == "reserved_pending_debit"]
     scheduled_out = [c for c in classified if c["cash_role"] == "scheduled_obligation"]
@@ -401,6 +458,8 @@ def build_request_state(request, profiles_by_user, events_by_user,
         "adjustable_future": adjustable,
         "excluded": excluded,
         "blank_amount_events": missing,
+        "ocr_reports": ocr_reports,
+        "ocr_resolved": len(ocr_amounts),
         "linked_pairs": linked_pairs,
         "recurring_candidates": recurring,
         "salary_history": salary_history,
@@ -435,6 +494,9 @@ def summarize_state(s):
         lines.append(f"    FUTURE+  {c['event_id']} {c['category']} {c['converted_amount']} on {c['settlement_date']}")
     for c in s["blank_amount_events"][:3]:
         lines.append(f"    BLANK   {c['event_id']} needs_image={c.get('linked_image')} exists={c.get('linked_image_exists')}")
+    for rep in (s.get("ocr_reports") or [])[:3]:
+        lines.append(f"    OCR     {rep['event_id']} <- {rep['image_id']}: {rep['result']}"
+                     f" amount={rep.get('amount')} label={rep.get('label')}")
     if s.get("salary_history") or s.get("scheduled_salary"):
         hist = ", ".join(f"{x['settlement_date']}:{x['converted_amount']}" for x in (s.get("salary_history") or [])[-3:])
         fut = ", ".join(f"{x['settlement_date']}:{x['converted_amount']}" for x in (s.get("scheduled_salary") or [])[:3])

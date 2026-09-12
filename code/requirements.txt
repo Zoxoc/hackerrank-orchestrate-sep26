@@ -1,0 +1,10 @@
+# Pinned OCR runtime (verified on Python 3.12, macOS arm64).
+# Install with: pip install -r code/requirements.txt
+# NOTE: numpy must stay <2 (opencv 4.9 wheels link against numpy 1.x).
+rapidocr-onnxruntime==1.4.4
+onnxruntime==1.30.0
+opencv-python==4.9.0.80
+numpy==1.26.4
+pillow==12.3.0
+pyclipper==1.4.0
+Shapely==2.1.2

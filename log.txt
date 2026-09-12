@@ -195,3 +195,64 @@ branch=main
 repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
 worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
 parent_agent=none
+
+## [2026-09-12T14:40:00Z] OCR step plan (no implementation)
+
+User Prompt (verbatim, secrets redacted):
+Now for the next step i want you to complete the OCR or photo amount reader for the few future blanks. First complete the OCR then we will go with message then decision logic. I want the proper plan for the OCR step now. Keep the plan in detail but simple for me to understand. Only approved plans should be implemented
+
+Agent Response Summary:
+Inventoried all 16 blank-amount events and their image links, checked local OCR tooling availability, and presented a detailed but simple OCR plan (what matters, extraction method with fallback, validation, wiring, verification) with no code written pending approval.
+
+Actions:
+* Read-only inventory of blanks vs images vs request dates
+* Checked for tesseract/PIL/pytesseract availability
+* No code changes
+
+Context:
+tool=opencode
+branch=main
+repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+parent_agent=none
+
+## [2026-09-12T14:50:00Z] Revised OCR plan with runtime OCR engine
+
+User Prompt (verbatim, secrets redacted):
+no you should download the required dependencies. But include the ocr model because this agent should work for future datasets too, whose images we might no have access to. So use OCR and then re give the plan on when do you want to initiate the ocr. Like when its required at the time of fetching the request in requests.csv or at once before hand and then use it for the appropriate request. Regive the plan properly
+
+Agent Response Summary:
+Checked install tooling availability and re-gave a runtime-OCR plan (engine with vendored/downloaded models, lazy per-request OCR with hash-keyed cache plus batch warmup option) with no code written pending approval.
+
+Actions:
+* Read-only environment checks (brew, python, pip, onnxruntime, disk)
+* No installs or code changes
+
+Context:
+tool=opencode
+branch=main
+repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+parent_agent=none
+
+## [2026-09-13T01:20:00Z] OCR runtime reader implemented and verified
+
+User Prompt (verbatim, secrets redacted):
+proceed
+
+Agent Response Summary:
+Installed rapidocr-onnxruntime with vendored ONNX models, built code/ocr_amounts.py with label-priority parsing plus hash-keyed cache, wired lazy per-request OCR into state reconstruction, and verified 15/16 images correct with full 250-request run using only 11 OCR calls. No dataset/ modifications, no hardcoded amounts.
+
+Actions:
+* pip installed rapidocr-onnxruntime stack (numpy pinned <2 for opencv)
+* Vendored 3 ONNX models to code/ocr_models/, added code/requirements.txt and .gitignore
+* Created code/ocr_amounts.py; edited code/financial_state.py for lazy OCR resolution
+* Verified accuracy per image, sample reruns, and full-run timing
+* Unstaged log.txt/pycache from git index (never commit logs)
+
+Context:
+tool=opencode
+branch=main
+repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+parent_agent=none
