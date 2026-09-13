@@ -32,8 +32,20 @@ _MONTHS = {m: i + 1 for i, m in enumerate(
      "jul", "aug", "sep", "oct", "nov", "dec"])}
 
 # Subject vocabularies (lowercased substrings).
-SALARY_WORDS = ("salary", "salaries", "payroll", "pay ", " pay", "upah", "gaji",
-                "penggajian", "paycheck")
+SALARY_WORDS = ("salary", "salaries", "payroll", "payslip", "payday",
+                "upah", "gaji", "penggajian", "paycheck", "wages")
+# Timing references that pin a pay change to a real payroll (the date itself
+# may then come from the event schedule). A bare level statement with no
+# timing reference is never applied as an override.
+NEXT_PAYROLL_WORDS = ("next payroll", "next pay", "next salary",
+                      "upcoming pay", "upcoming salary", "penggajian berikutnya",
+                      "gaji berikutnya", "next payslip", "payday",
+                      "siklus penggajian berikut")
+# "Resumes" language: the stated pay continues monthly afterwards.
+RESUME_HINTS = ("resume", "restart", "mulai kembali", "kembali normal",
+                "berlanjut", "continue")
+# Prize/claim contexts never stop salary (handled as CONFIRM_SKIP instead).
+PRIZE_VETO_WORDS = ("prize", "hadiah", "lottery", "lotere", "claim", "klaim")
 BONUS_WORDS = ("bonus", "commission", "komisi", "arrears", "tunggakan",
                "adjustment", "penyesuaian", "one-time", "one time", "satu kali")
 PAYOUT_WORDS = ("payout", "invoice", "faktur", "pembayaran faktur", "claim",
@@ -48,7 +60,7 @@ PRIZE_WORDS = ("prize", "hadiah", "lottery", "lotere", "reward")
 SKIP_HINTS = ("pending", "awaiting", "not yet", "not been", "has not",
               "haven't", "unapproved", "until approved", "until.*complet",
               "can change", "withdrawable", "processing", "no .* sold",
-              "no cash", "no units", "tertunda", "menunggu", "belum",
+              "no cash", "no units", "no further", "tertunda", "menunggu", "belum",
               "belum disetujui", "belum dikredit", "diproses", "tidak.*dijual")
 CHANGE_HINTS = ("increased", "increase", "raised", "rise", "rose", "naik",
                 "menjadi", "reduced", "reduction", "reduced to", "cut",
@@ -204,14 +216,20 @@ def parse_message(msg, state):
             and _has(text, SALARY_WORDS) and not rent_scale):
         amount = _nearest_salary_amount(text)
         dates = _extract_any_dates(text)
-        eff = dates[-1] if dates else _next_payroll_date(state)
+        eff, eff_source = None, "explicit"
+        if dates:
+            eff = dates[-1]
+        elif _has(text, NEXT_PAYROLL_WORDS):
+            # "Your next salary is X": the date is the series' own next
+            # occurrence on/after the request (interpolated, never invented).
+            eff, eff_source = _next_payroll_date(state), "next_payroll"
         extra = "; bonus/commission/arrears parts stay excluded" \
             if _has(text, BONUS_WORDS) else ""
         if amount is not None and eff:
             out.append({"action": "SET_SALARY", "message_id": mid, "applied": True,
                         "note": f"regular salary set to {amount} from {eff}{extra}",
                         "params": {"amount": amount, "from_date": eff,
-                                   "date_source": "explicit" if dates else "next_payroll"},
+                                   "date_source": eff_source},
                         "sent_at": msg.get("sent_at")})
         elif not out:
             out.append({"action": "SET_SALARY", "message_id": mid, "applied": False,
@@ -293,7 +311,9 @@ def parse_message(msg, state):
                         "params": {}, "sent_at": msg.get("sent_at")})
 
     # 8. Hard STOP: income ended AND no amounts stated (pure stop).
-    if _has_pair(text, STOP_HINTS) and not _extract_amounts(text) and (
+    # Prize/claim contexts never stop salary (they close the prize, not the job).
+    if _has_pair(text, STOP_HINTS) and not _extract_amounts(text) \
+            and not _has(text, PRIZE_VETO_WORDS) and (
             _has(text, SALARY_WORDS) or _has(text, ("contract", "kontrak", "income",
                                                     "penghasilan", "shift", "renewal"))):
         out.append({"action": "STOP_SALARY", "message_id": mid, "applied": True,
@@ -354,6 +374,10 @@ def _find_move_target(state):
 
 
 def _next_payroll_date(state):
+    """Next payroll date: scheduled/expected credits first, else the own
+    series' next monthly occurrence (established cadence interpolated,
+    only called for messages that reference the next payroll).
+    """
     req = _parse_date(state.get("request_date"))
     fut = [c.get("settlement_date") for c in
            (state.get("confirmed_future_credits", []) or []) if c.get("settlement_date")]
@@ -367,7 +391,6 @@ def _next_payroll_date(state):
         sched = [d for d in sched if (_parse_date(d) or req) >= req]
     if sched:
         return sorted(sched)[0]
-    # Fallback: monthly payroll continues after the latest settled salary.
     hist = [x.get("settlement_date") for x in
             (state.get("salary_history", []) or []) if x.get("settlement_date")]
     if hist and req:
@@ -438,8 +461,10 @@ def build_adjustments(state, fx_index=None):
 
     adj = {"salary_override": None, "stop_salary": False, "moved_dates": {},
            "extra_flows": [], "scales": {}, "exclude_event_ids": set(),
-           "amendments": amendments, "notes": []}
+           "salary_seeds": [], "amendments": amendments, "notes": []}
     home = (state.get("profile", {}) or {}).get("home_currency", "")
+    msg_text = {m.get("message_id"): (m.get("text") or "")
+                for m in state.get("messages", []) or []}
 
     salary_sets = [a for a in amendments
                    if a["action"] == "SET_SALARY" and a["applied"]]
@@ -470,10 +495,17 @@ def build_adjustments(state, fx_index=None):
             adj["moved_dates"][p["event_id"]] = p["new_date"]
             adj["notes"].append(f"{a['message_id']}: {a['note']}")
         elif a["action"] == "ADD_CONFIRMED_PAY":
-            adj["extra_flows"].append(
-                {"date": p["date"], "amount": p["amount"],
-                 "label": f"msg:{a['message_id']}"})
             adj["notes"].append(f"{a['message_id']}: {a['note']}")
+            if _has(msg_text.get(a["message_id"]), RESUME_HINTS):
+                # "Resumes": the pay continues monthly (seeded, not one-off).
+                adj["salary_seeds"].append(
+                    {"amount": p["amount"], "date": p["date"]})
+                adj["notes"].append(
+                    f"{a['message_id']}: resumed pay continues monthly from {p['date']}")
+            else:
+                adj["extra_flows"].append(
+                    {"date": p["date"], "amount": p["amount"],
+                     "label": f"msg:{a['message_id']}"})
         elif a["action"] == "ADD_BILL":
             adj["extra_flows"].append(
                 {"date": p["start_date"], "amount": -p["amount"],

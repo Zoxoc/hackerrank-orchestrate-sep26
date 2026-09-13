@@ -390,3 +390,77 @@ branch=main
 repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
 worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
 parent_agent=none
+
+## [2026-09-13T14:52:00Z] Clarify what the 20 percent means
+
+User Prompt (verbatim, secrets redacted):
+so the accuracy is 20%
+
+Agent Response Summary:
+Confirmed full-row exact-match accuracy is 5/25 (20%) and contextualized it with field-level scores and the strictness of the metric. No code changes.
+
+Actions:
+* No code or dataset changes; clarification only
+
+Context:
+tool=opencode
+branch=main
+repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+parent_agent=none
+
+## [2026-09-13T14:55:00Z] Confirm explanation excluded from verdict
+
+User Prompt (verbatim, secrets redacted):
+the test does it pass all the values except the decision explanation. Because the other fields accuracy matters
+
+Agent Response Summary:
+Confirmed the row verdict uses only the six decisive fields and decision_explanation is scored separately as validity-only. No code changes.
+
+Actions:
+* No code or dataset changes; confirmation only
+
+Context:
+tool=opencode
+branch=main
+repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+parent_agent=none
+
+## [2026-09-13T14:58:00Z] Localize where the model is failing
+
+User Prompt (verbatim, secrets redacted):
+So only 5/25 test cases have passed the 6 important fields. Where is the error occuring. Where is our model failing right now
+
+Agent Response Summary:
+Localized failures by pipeline stage: the state/OCR/message layers are verified correct and nearly all error enters at forecast calibration, with one ranking issue on request_11. No code changes.
+
+Actions:
+* No code or dataset changes; failure analysis only
+
+Context:
+tool=opencode
+branch=main
+repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+parent_agent=none
+
+## [2026-09-13T15:15:00Z] Forecast calibration fixes, test 5/25, artifacts rebuilt
+
+User Prompt (verbatim, secrets redacted):
+Now fix the errors we found in the 25-sample automated test. ... Focus on bill/income timing, variable spending, baseline forecast, request-11 ranking. ... Run test_samples.py, show new result, explain bugs fixed. No hardcoding, no dataset changes.
+
+Agent Response Summary:
+Fixed six principled bugs (prize-text salary stop, gig pay projection, payday preservation with shifted-cycle rule, monthly freelance cadences, explicit-timing rule for raises, with-changes safe-amount search) plus monthly bill stepping and message-date filtering from prior analysis. Test: 5/25 full rows, status 21/25, method 22/25. Rebuilt output.csv (250 rows) and code.zip. Remaining gaps are hidden-model calibration tolerances.
+
+Actions:
+* Edited financial_state, forecast, message_actions, decision modules
+* Ran test_samples.py and full pipeline; rebuilt output.csv and code.zip
+* No hardcoded request IDs or answers; no dataset changes
+
+Context:
+tool=opencode
+branch=main
+repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+parent_agent=none

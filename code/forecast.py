@@ -111,49 +111,121 @@ SALARY_END_KEYWORDS = (
 )
 
 
-def project_salary(state, start, end, salary_override=None, stop=False):
-    """Project base salary monthly. Returns (flows, assumptions).
+def project_salary(state, start, end, salary_override=None, stop=False,
+                   salary_seeds=None):
+    """Project confirmed recurring pay. Returns (flows, assumptions).
 
-    Amount: latest scheduled regular salary if present, else latest settled
-    regular salary. Anchor: latest known salary date. Already-counted
-    scheduled salary dates are skipped to avoid double counting.
-    A latest salary marked as final/terminal stops all projection.
+    Monthly payroll (median interval 24-33 days) is projected on payday;
+    professional freelance-style series (6-23 days) at their own cadence.
+    Gig/weekly-platform/variable pay is never projected. Payday rule: when
+    the latest known pay arrived a full cycle after the previous one the
+    cycle shifted (continue from it); a mid-cycle extra never moves payday.
+    A latest pay marked as final/terminal stops all projection.
     salary_override {"amount", "from_date"}: projections on/after from_date
-    use the new amount. stop=True: no projection at all.
+    use the new amount. salary_seeds [{"amount", "date"}]: confirmed
+    (re)starts counted once on their date, then continued monthly.
+    stop=True: no projection at all.
     """
+    import calendar as _cal2
+    from collections import Counter as _Counter2
     if stop:
         return [], ["salary stopped by message amendment: no salary projected"]
     sched = state.get("scheduled_salary", []) or []
     hist = state.get("salary_history", []) or []
     latest = sched[-1] if sched else (hist[-1] if hist else None)
-    if latest is None:
+    seeds = salary_seeds or []
+    if latest is None and not seeds:
         return [], ["no regular salary found: no salary projected"]
-    if any(k in (latest.get("description") or "").lower() for k in SALARY_END_KEYWORDS):
+    if latest is not None and any(
+            k in (latest.get("description") or "").lower() for k in SALARY_END_KEYWORDS):
         return [], [f"salary ended ({latest.get('description')} on "
                     f"{latest.get('settlement_date')}): no salary projected"]
-    amount = latest["converted_amount"]
+    hdates = sorted(_parse(x["settlement_date"]) for x in hist
+                    if x.get("settlement_date"))
+    hdates = [d for d in hdates if d]
+    confirmed = bool(sched or seeds or salary_override)
+    band = None
+    if len(hdates) >= 2:
+        ivs = sorted((hdates[i + 1] - hdates[i]).days for i in range(len(hdates) - 1))
+        med = ivs[len(ivs) // 2]
+        if 24 <= med <= 33:
+            band = "monthly"
+        elif 6 <= med <= 23 and len(hdates) >= 3:
+            band = "interval"
+    if band is None and not confirmed:
+        return [], ["pay series not monthly-confirmed: not projected"]
+    amount = latest["converted_amount"] if latest is not None else None
     notes = []
     if salary_override:
         from_date = _parse(salary_override.get("from_date"))
         new_amount = float(salary_override.get("amount"))
         notes.append(f"message salary override: {new_amount} from "
                      f"{salary_override.get('from_date')}")
+        if amount is None:
+            amount = new_amount
     else:
         from_date, new_amount = None, None
+    if amount is None:
+        amount = seeds[0]["amount"] if seeds else 0
     known = {_parse(x["settlement_date"]) for x in sched + hist if x.get("settlement_date")}
     known = {d for d in known if d}
-    anchor = max(known) if known else start
-    # first projection strictly after anchor
-    d = _add_months(anchor, 1)
-    flows = []
-    n = 0
-    while d <= end:
-        if d >= start and d not in known:
-            amt = new_amount if (from_date and d >= from_date) else amount
-            flows.append((d, +round(amt, 2), "recurring:salary", None))
+    seed_dates = {_parse(s["date"]) for s in seeds if s.get("date")}
+    seed_dates = {d for d in seed_dates if d}
+    if band == "monthly" or not band:
+        # Payday: a latest pay that arrived a full cycle late shifted the
+        # cycle (continue from it); a mid-cycle extra never moves payday.
+        if len(hdates) >= 2 and (hdates[-1] - hdates[-2]).days >= 27:
+            payday = hdates[-1].day
+            base = hdates[-1]
+        elif known:
+            payday = _Counter2(d.day for d in known).most_common(1)[0][0]
+            base = max(known)
+        elif seed_dates:
+            payday = _Counter2(d.day for d in seed_dates).most_common(1)[0][0]
+            base = min(seed_dates)
+        else:
+            payday = start.day
+            base = start
+        step_mode = ("monthly", payday, base)
+    else:
+        ivs = sorted((hdates[i + 1] - hdates[i]).days for i in range(len(hdates) - 1))
+        step_mode = ("interval", ivs[len(ivs) // 2], max(hdates))
+    # first projection strictly after the latest known salary
+    n, flows, count = 1, [], 0
+    if step_mode[0] == "monthly":
+        _, payday, base = step_mode
+        while True:
+            cand = _add_months(base, n)
+            cand = date(cand.year, cand.month,
+                        min(payday, _cal2.monthrange(cand.year, cand.month)[1]))
+            if cand > end:
+                break
+            if cand >= start and cand not in known and cand not in seed_dates:
+                amt = new_amount if (from_date and cand >= from_date) else amount
+                flows.append((cand, +round(amt, 2), "recurring:salary", None))
+                count += 1
             n += 1
-        d = _add_months(d, 1)
-    return flows, [f"projected salary: monthly at {round(amount, 2)} x{n}"] + notes
+        cadence_note = f"monthly(day {payday})"
+    else:
+        _, step, base = step_mode
+        cand = base + timedelta(days=step)
+        while cand < start:
+            cand += timedelta(days=step)
+        while cand <= end:
+            if cand not in known and cand not in seed_dates:
+                amt = new_amount if (from_date and cand >= from_date) else amount
+                flows.append((cand, +round(amt, 2), "recurring:salary", None))
+                count += 1
+            cand += timedelta(days=step)
+        cadence_note = f"every ~{step}d"
+    for s in seeds:
+        d = _parse(s.get("date"))
+        if d and start <= d <= end:
+            flows.append((d, +round(float(s["amount"]), 2), "recurring:salary", None))
+            count += 1
+    flows.sort(key=lambda t: t[0])
+    return flows, [f"projected salary: {cadence_note} at {round(amount, 2)} "
+                   f"x{count}"] + notes
 
 
 def collect_message_adjustments(state):
@@ -227,7 +299,8 @@ def build_baseline_forecast(state, horizon_days=FORECAST_DAYS, adjustments=None)
     sal_flows, sal_notes = project_salary(
         state, start, end,
         salary_override=adj.get("salary_override"),
-        stop=bool(adj.get("stop_salary")))
+        stop=bool(adj.get("stop_salary")),
+        salary_seeds=adj.get("salary_seeds"))
     dated.extend(sal_flows)
     for ef in adj.get("extra_flows", []) or []:
         d0 = _parse(ef.get("date"))

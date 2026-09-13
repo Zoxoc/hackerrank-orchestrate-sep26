@@ -72,12 +72,12 @@ def earliest_full_date(state, forecast, requested):
     return None
 
 
-def safe_today_cents(state, forecast, requested):
+def safe_today_cents(state, forecast, requested, nets=None):
     hi = int(round(float(requested) * 100))
     lo, best = 0, 0
     while lo <= hi:
         mid = (lo + hi) // 2
-        if simulate(forecast, [(state["request_date"], mid / 100.0)]):
+        if simulate(forecast, [(state["request_date"], mid / 100.0)], nets):
             best, lo = mid, mid + 1
         else:
             hi = mid - 1
@@ -288,7 +288,8 @@ def search_with_changes(state, forecast, requested, safe, earliest):
     results = []
     for combo in ordered:
         nets = _apply_changes_to_nets(forecast, state, combo)
-        best = find_best_plan(state, forecast, requested, safe, earliest,
+        safe_c = safe_today_cents(state, forecast, requested, nets)
+        best = find_best_plan(state, forecast, requested, safe_c, earliest,
                               nets=nets, allow_changes=True)
         if best:
             results.append((len(combo), best["key"], combo, best))

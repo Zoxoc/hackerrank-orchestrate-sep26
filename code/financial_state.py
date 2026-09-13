@@ -245,8 +245,13 @@ def _salary_keywords_ok(raw):
     text = f"{raw.get('event_type','')} {raw.get('category','')} {raw.get('description','')}".lower()
     if "salary" not in text and "payroll" not in text:
         return False
+    # Platform/on-demand gig fragments are not base salary: paid per task,
+    # often still pending, never a forecastable series. Professional
+    # freelance/contract/retainer work keeps its own recurring cadence.
     for bad in ("arrears", "adjustment", "bonus", "back pay", "backpay", "one-time", "one time",
-                "reversal", "commission", "komisi", "performance", "incentive"):
+                "reversal", "commission", "komisi", "performance", "incentive",
+                "gig", "platform payout", "weekly", "driver", "delivery platform",
+                "task marketplace", "app earnings"):
         if bad in text:
             return False
     return True

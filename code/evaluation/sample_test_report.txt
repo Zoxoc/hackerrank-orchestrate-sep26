@@ -16,15 +16,15 @@ request_02 | FAIL | reason: amount_safe_to_pay [|18336765.49-17229139.2|>861456.
     spending_changes_needed: expected='none' actual='none'
     decision_explanation: valid=True (grounded)
     actual explanation: Use 3 installments of IDR 15,952,906.67, starting 2025-08-08. This leaves at least IDR 29,158,400 available.
-request_03 | FAIL | reason: affordability_status [exact]; recommended_payment_method [exact]; amount_safe_to_pay [|494366.36-873000.0|>43650.00]; payment_plan [0 entries != 1]; earliest_date_for_full_payment [exact]
-    affordability_status: expected='affordable_later' actual='not_affordable'
-    recommended_payment_method: expected='wait' actual='not_recommended'
-    amount_safe_to_pay: expected='873000' actual=494366.36
-    payment_plan: expected='2019-11-15:5491000' actual='none'
-    earliest_date_for_full_payment: expected='2019-11-15' actual='2019-11-30'
+request_03 | FAIL | reason: amount_safe_to_pay [|971737.0-873000.0|>43650.00]
+    affordability_status: expected='affordable_later' actual='affordable_later'
+    recommended_payment_method: expected='wait' actual='wait'
+    amount_safe_to_pay: expected='873000' actual=971737.0
+    payment_plan: expected='2019-11-15:5491000' actual='2019-11-15:5491000'
+    earliest_date_for_full_payment: expected='2019-11-15' actual='2019-11-15'
     spending_changes_needed: expected='none' actual='none'
     decision_explanation: valid=True (grounded)
-    actual explanation: Do not make this payment by 2019-11-15. None of the available options keeps the IDR 2,668,700 minimum protected.
+    actual explanation: Wait until 2019-11-15, then pay IDR 5,491,000 in full. Paying sooner would put the IDR 2,668,700 minimum at risk.
 request_04 | FAIL | reason: amount_safe_to_pay [|10609286.07-8401800.0|>420090.00]
     affordability_status: expected='affordable_later' actual='affordable_later'
     recommended_payment_method: expected='wait' actual='wait'
@@ -79,24 +79,24 @@ request_09 | PASS | reason: all fields match
     spending_changes_needed: expected='none' actual='none'
     decision_explanation: valid=True (grounded)
     actual explanation: Pay EUR 166.61 today. This leaves at least EUR 600 available over the next 90 days.
-request_10 | FAIL | reason: amount_safe_to_pay [|67906.45-12700.0|>635.00]
+request_10 | FAIL | reason: amount_safe_to_pay [|0.0-12700.0|>635.00]
     affordability_status: expected='not_affordable' actual='not_affordable'
     recommended_payment_method: expected='not_recommended' actual='not_recommended'
-    amount_safe_to_pay: expected='12700' actual=67906.45
+    amount_safe_to_pay: expected='12700' actual=0.0
     payment_plan: expected='none' actual='none'
     earliest_date_for_full_payment: expected='' actual=''
     spending_changes_needed: expected='none' actual='none'
     decision_explanation: valid=True (grounded)
     actual explanation: Do not make this payment by 2025-02-10. None of the available options keeps the INR 225,400 minimum protected.
-request_11 | FAIL | reason: affordability_status [exact]; recommended_payment_method [exact]; payment_plan [date 2025-05-15 != 2025-05-03]; earliest_date_for_full_payment [exact]; spending_changes_needed [exact]
-    affordability_status: expected='affordable_with_plan' actual='affordable_later'
-    recommended_payment_method: expected='full_payment' actual='wait'
+request_11 | FAIL | reason: earliest_date_for_full_payment [exact]
+    affordability_status: expected='affordable_with_plan' actual='affordable_with_plan'
+    recommended_payment_method: expected='full_payment' actual='full_payment'
     amount_safe_to_pay: expected='12510645' actual=12319866.62
-    payment_plan: expected='2025-05-03:13110000' actual='2025-05-15:13110000'
-    earliest_date_for_full_payment: expected='2025-07-15' actual='2025-05-15'
-    spending_changes_needed: expected='reduce_to:event_989:665950' actual='none'
+    payment_plan: expected='2025-05-03:13110000' actual='2025-05-03:13110000'
+    earliest_date_for_full_payment: expected='2025-07-15' actual='2025-06-15'
+    spending_changes_needed: expected='reduce_to:event_989:665950' actual='reduce_to:event_989:665950'
     decision_explanation: valid=True (grounded)
-    actual explanation: Wait until 2025-05-15, then pay IDR 13,110,000 in full. Paying sooner would put the IDR 34,140,600 minimum at risk.
+    actual explanation: Reduce the Weekend food delivery to 665950, then pay IDR 13,110,000 today. This leaves at least IDR 34,140,600 available.
 request_12 | FAIL | reason: amount_safe_to_pay [|60370.23-65164.0|>3258.20]; earliest_date_for_full_payment [exact]; spending_changes_needed [exact]
     affordability_status: expected='affordable_with_plan' actual='affordable_with_plan'
     recommended_payment_method: expected='installments' actual='installments'
@@ -205,10 +205,10 @@ request_23 | FAIL | reason: amount_safe_to_pay [|8360.17-9152.0|>457.60]
     spending_changes_needed: expected='none' actual='none'
     decision_explanation: valid=True (grounded)
     actual explanation: Wait until 2025-07-15, then pay ZAR 38,016 in full. Paying sooner would put the ZAR 27,000 minimum at risk.
-request_24 | FAIL | reason: amount_safe_to_pay [|0.0-13420.0|>671.00]
+request_24 | FAIL | reason: amount_safe_to_pay [|14898.28-13420.0|>671.00]
     affordability_status: expected='not_affordable' actual='not_affordable'
     recommended_payment_method: expected='not_recommended' actual='not_recommended'
-    amount_safe_to_pay: expected='13420' actual=0.0
+    amount_safe_to_pay: expected='13420' actual=14898.28
     payment_plan: expected='none' actual='none'
     earliest_date_for_full_payment: expected='' actual=''
     spending_changes_needed: expected='none' actual='none'
@@ -226,10 +226,10 @@ request_25 | FAIL | reason: amount_safe_to_pay [|376083.4-1425000.0|>71250.00]
 
 SUMMARY
 Overall: 5/25 (20%)
-  affordability_status: 19/25 (76%)
-  recommended_payment_method: 20/25 (80%)
+  affordability_status: 21/25 (84%)
+  recommended_payment_method: 22/25 (88%)
   amount_safe_to_pay: 10/25 (40%)
-  payment_plan: 19/25 (76%)
-  earliest_date_for_full_payment: 18/25 (72%)
-  spending_changes_needed: 21/25 (84%)
+  payment_plan: 21/25 (84%)
+  earliest_date_for_full_payment: 19/25 (76%)
+  spending_changes_needed: 22/25 (88%)
   decision_explanation valid: 25/25 (100%) (validity only, not exact match)
