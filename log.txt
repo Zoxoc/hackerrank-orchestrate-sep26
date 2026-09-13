@@ -484,3 +484,42 @@ branch=main
 repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
 worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
 parent_agent=none
+
+## [2026-09-13T16:40:00Z] Accuracy question: plan accuracy, safe-amount root cause
+
+User Prompt (verbatim, secrets redacted):
+is the plan accurate and what is the accuracy. What exactly is root problem of incorrect safe to pay amounts, and is there a solution for it
+
+Agent Response Summary:
+Reported field accuracies (plan 21/25 = 84%, overall rows 6/25). Explained safe-amount root cause as baseline-calibration noise with mixed error directions (no single bug), and why no legitimate global fix exists without overfitting to style examples.
+
+Actions:
+* No code changes; answered from audit evidence
+
+Context:
+tool=opencode
+branch=main
+repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+parent_agent=none
+
+## [2026-09-13T16:45:00Z] Final submission prep: verified, committed f93e242, pushed
+
+User Prompt (verbatim, secrets redacted):
+We are done with the core implementation... [11-step final submission prep: run main.py, verify output.csv, validator, sample test, audit, usage_report, code.zip, log check, checklist, commit 'Finalize Buy or Wait submission' + push]
+
+Agent Response Summary:
+Ran all 11 steps: output.csv 250/250 with zero rule violations, validator 0 errors, sample test 6/25 reported honestly, clean-checkout run verified, usage_report updated (0 tokens, 11 local OCR reads), code.zip rebuilt (19 files), log.txt append-only and uncommitted. Committed code.zip + usage_report.md as f93e242 and pushed to origin main. No model tuning, no dataset changes, no secrets.
+
+Actions:
+* Ran code/main.py, rule verifier, validate_row over 250 rows, test_samples.py
+* Verified clean-checkout run in temp worktree copy (removed after)
+* Edited code/evaluation/usage_report.md; rebuilt code.zip
+* Committed 2 files and pushed to origin/main
+
+Context:
+tool=opencode
+branch=main
+repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+parent_agent=none
