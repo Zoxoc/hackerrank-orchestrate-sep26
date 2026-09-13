@@ -38,7 +38,14 @@ def _median(xs):
 
 
 def project_recurring(state, start, end):
-    """Project recurring DEBIT categories forward. Returns (flows, assumptions)."""
+    """Project recurring DEBIT categories forward. Returns (flows, assumptions).
+
+    Monthly cadences (median interval 27-32 days) step by calendar month on
+    the usual day-of-month (bills are due on a date, not every 30 days);
+    other cadences step by median interval days.
+    """
+    import calendar as _cal
+    from collections import Counter as _Counter
     flows = []  # (date, signed_amount, label, event_ref)
     assumptions = []
     for cat, r in sorted(state.get("recurring_candidates", {}).items()):
@@ -53,19 +60,37 @@ def project_recurring(state, start, end):
         avg = float(r.get("avg_amount", 0))
         if avg <= 0:
             continue
-        last = max(dates) if dates else start - timedelta(days=step)
-        nxt = last + timedelta(days=step)
-        # fast-forward to window
-        while nxt < start:
-            nxt += timedelta(days=step)
-        projected = 0
-        d = nxt
-        while d <= end:
-            flows.append((d, -round(avg, 2), f"recurring:{cat}", None))
-            projected += 1
-            d += timedelta(days=step)
+        monthly = 27 <= step <= 32 and len(dates) >= 2
+        if monthly:
+            dom = _Counter(d.day for d in dates).most_common(1)[0][0]
+            last = max(dates)
+            n, d, projected = 1, None, 0
+            while True:
+                cand = _add_months(last, n)
+                cand = date(cand.year, cand.month,
+                            min(dom, _cal.monthrange(cand.year, cand.month)[1]))
+                if cand > end:
+                    break
+                if cand >= start:
+                    flows.append((cand, -round(avg, 2), f"recurring:{cat}", None))
+                    projected += 1
+                n += 1
+            cadence_note = f"monthly on day {dom}"
+        else:
+            last = max(dates) if dates else start - timedelta(days=step)
+            nxt = last + timedelta(days=step)
+            # fast-forward to window
+            while nxt < start:
+                nxt += timedelta(days=step)
+            projected = 0
+            d = nxt
+            while d <= end:
+                flows.append((d, -round(avg, 2), f"recurring:{cat}", None))
+                projected += 1
+                d += timedelta(days=step)
+            cadence_note = f"every ~{step}d"
         assumptions.append(
-            f"projected {cat}: every ~{step}d at {round(avg, 2)} x{projected} "
+            f"projected {cat}: {cadence_note} at {round(avg, 2)} x{projected} "
             f"(from {r.get('count')} settled occurrences)"
         )
     return flows, assumptions

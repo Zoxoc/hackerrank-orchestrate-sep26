@@ -356,6 +356,45 @@ def build_request_state(request, profiles_by_user, events_by_user,
 
     recurring = detect_recurring(history)
 
+    # Adjustable recurring spending (for later spending-change search):
+    # per category with flexible settled history: representative event,
+    # permitted actions from profile lists, minimum for reductions.
+    # NOTE: raw minimums/descriptions come from raw_events (classified
+    # rows do not carry them); converted via the classified row.
+    raw_by_id = {e.get("event_id"): e for e in raw_events}
+    protect = set([p for p in (profile.get("expense_categories_to_protect") or "").split("|") if p])
+    allow_red = set([p for p in (profile.get("expense_categories_user_is_willing_to_reduce") or "").split("|") if p])
+    allow_stop = set([p for p in (profile.get("expense_categories_user_is_willing_to_stop") or "").split("|") if p])
+    cat_rows = {}
+    for c in history:
+        if c["direction"] != "debit" or (c["flexibility"] or "fixed") == "fixed":
+            continue
+        cat_rows.setdefault(c["category"], []).append(c)
+    adjustable_recurring = {}
+    for cat, items in sorted(cat_rows.items()):
+        flags = set()
+        for c in items:
+            flags.add((c["flexibility"] or "").strip())
+        can_red = cat in allow_red and any("reducible" in f for f in flags)
+        can_stop = cat in allow_stop and any("stoppable" in f for f in flags)
+        if cat in protect or not (can_red or can_stop):
+            continue
+        items_sorted = sorted(items, key=lambda c: c["settlement_date"])
+        rep = items_sorted[-1]
+        raw = raw_by_id.get(rep["event_id"], {})
+        try:
+            minimum = float((raw.get("minimum_allowed_amount") or "").strip())
+        except ValueError:
+            minimum = None
+        adjustable_recurring[cat] = {
+            "event_id": rep["event_id"],
+            "description": raw.get("description") or cat,
+            "can_reduce": can_red,
+            "can_stop": can_stop,
+            "minimum": minimum,
+            "avg_amount": recurring.get(cat, {}).get("avg_amount"),
+        }
+
     # Regular-salary series (raw description-aware): monthly anchor + amount.
     salary_history = _extract_salary_info(raw_events, by_id, request_date, "history")
     scheduled_salary = _extract_salary_info(raw_events, by_id, request_date, "future")
@@ -367,11 +406,15 @@ def build_request_state(request, profiles_by_user, events_by_user,
         and (c["flexibility"] or "fixed") != "fixed"
     ]
 
-    # Relevant messages: same user; flag request-linked and event-linked.
+    # Relevant messages: same user; only what was known on request_date
+    # (later messages must not leak into the decision); flag links.
     event_ids = {c["event_id"] for c in classified}
     rel_messages = []
     for m in messages:
         if m.get("user_id") != user_id:
+            continue
+        sent = parse_date(m.get("sent_at"))
+        if sent is not None and sent > request_date:
             continue
         m_req = (m.get("request_id") or "").strip()
         m_ev = (m.get("related_event_id") or "").strip()
@@ -462,6 +505,7 @@ def build_request_state(request, profiles_by_user, events_by_user,
         "ocr_resolved": len(ocr_amounts),
         "linked_pairs": linked_pairs,
         "recurring_candidates": recurring,
+        "adjustable_recurring": adjustable_recurring,
         "salary_history": salary_history,
         "scheduled_salary": scheduled_salary,
         "messages": rel_messages,
