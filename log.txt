@@ -464,3 +464,23 @@ branch=main
 repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
 worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
 parent_agent=none
+
+## [2026-09-13T16:30:00Z] Final audit of 25-sample failures: 1 real bug, rest ambiguous
+
+User Prompt (verbatim, secrets redacted):
+Now do a final audit of the remaining failures from the 25-sample test. Do not try to force the outputs to match the samples... [full forecast trace per failed request, fix only real general bugs, rerun test + main + validator, report old vs new / bugs fixed / ambiguous remainders / 250 validity]
+
+Agent Response Summary:
+Traced starting balance, income dates, essentials, recurring assumptions, pending/scheduled items, minimum, and message effects for all 20 failures. Found one real general bug (ADD_BILL borrowed the salary figure for an amount-less bill); fixed with sentence-scoped amounts and request_14 now passes exactly. Rejected median-vs-mean switch (helps 2/19, inconsistent signs, anti-conservative). Other parses vindicated (user_12 STOP, user_13 second-income exclusion, OCR telecom bill). Test now 6/25; full run 250/250 rows, validator 0 errors.
+
+Actions:
+* Edited code/message_actions.py (ADD_BILL sentence-scoped amounts + restored helper)
+* Ran test_samples.py, main.py (250 rows), row validator, rebuilt code.zip
+* No hardcoded IDs/answers; no dataset changes; OCR/state/validation logic untouched
+
+Context:
+tool=opencode
+branch=main
+repo_root=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+worktree=/Users/madhav/Desktop/Coding/Hackathons/hackerrank-orchestrate-september26
+parent_agent=none

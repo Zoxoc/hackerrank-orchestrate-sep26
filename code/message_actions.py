@@ -172,6 +172,24 @@ def _has(text, words):
     return any(w in t for w in words)
 
 
+def _bill_sentence_amounts(text):
+    """Amounts stated in the same sentence as a new-bill mention.
+
+    A new recurring bill must carry its own figure; borrowing an amount
+    from another sentence (e.g. the salary figure) invents the bill.
+    Returns [] when the bill sentence states no amount.
+    """
+    t = text or ""
+    begin = ("new recurring", "begins", "starts", "mulai", "baru")
+    parts = re.split(r"[;!?]|\.\s+(?=[A-Z])", t)
+    out = []
+    for sent in parts:
+        low = sent.lower()
+        if any(b in low for b in BILL_WORDS) and any(h in low for h in begin):
+            out.extend(_extract_amounts(sent))
+    return out
+
+
 def _has_pair(text, pairs):
     t = (text or "").lower()
     return any(all(w in t for w in pair) for pair in pairs)
@@ -278,11 +296,13 @@ def parse_message(msg, state):
                                 "note": "confirmed pay described but explicit amount/date missing; no change",
                                 "params": {}, "sent_at": msg.get("sent_at")})
 
-    # 6. Brand-new recurring bill.
+    # 6. Brand-new recurring bill. The amount must be stated in the
+    # bill's own sentence -- never borrowed from a salary figure
+    # elsewhere in the message.
     if _has(text, ("new recurring", "begins", "starts", "mulai", "baru")) \
             and _has(text, BILL_WORDS) \
             and not _has(text, SKIP_HINTS):
-        amounts = _extract_amounts(text)
+        amounts = _bill_sentence_amounts(text)
         dates = _extract_any_dates(text)
         start = dates[-1] if dates else _same_month_anchor(state, text)
         if amounts and start:

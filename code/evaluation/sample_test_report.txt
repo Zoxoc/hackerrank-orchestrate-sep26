@@ -115,10 +115,10 @@ request_13 | FAIL | reason: affordability_status [exact]; recommended_payment_me
     spending_changes_needed: expected='none' actual='none'
     decision_explanation: valid=True (grounded)
     actual explanation: Do not make this payment by 2024-05-15. None of the available options keeps the EUR 1,300 minimum protected.
-request_14 | FAIL | reason: amount_safe_to_pay [|0.0-597.74|>29.89]
+request_14 | PASS | reason: all fields match
     affordability_status: expected='not_affordable' actual='not_affordable'
     recommended_payment_method: expected='not_recommended' actual='not_recommended'
-    amount_safe_to_pay: expected='597.74' actual=0.0
+    amount_safe_to_pay: expected='597.74' actual=616.29
     payment_plan: expected='none' actual='none'
     earliest_date_for_full_payment: expected='' actual=''
     spending_changes_needed: expected='none' actual='none'
@@ -225,10 +225,10 @@ request_25 | FAIL | reason: amount_safe_to_pay [|376083.4-1425000.0|>71250.00]
     actual explanation: Do not make this payment by 2024-04-17. None of the available options keeps the IDR 23,379,100 minimum protected.
 
 SUMMARY
-Overall: 5/25 (20%)
+Overall: 6/25 (24%)
   affordability_status: 21/25 (84%)
   recommended_payment_method: 22/25 (88%)
-  amount_safe_to_pay: 10/25 (40%)
+  amount_safe_to_pay: 11/25 (44%)
   payment_plan: 21/25 (84%)
   earliest_date_for_full_payment: 19/25 (76%)
   spending_changes_needed: 22/25 (88%)
