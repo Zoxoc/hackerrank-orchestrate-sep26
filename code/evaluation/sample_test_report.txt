@@ -1,0 +1,235 @@
+request_01 | PASS | reason: all fields match
+    affordability_status: expected='affordable_now' actual='affordable_now'
+    recommended_payment_method: expected='full_payment' actual='full_payment'
+    amount_safe_to_pay: expected='25256' actual=25256.0
+    payment_plan: expected='2024-03-03:25256' actual='2024-03-03:25256'
+    earliest_date_for_full_payment: expected='2024-03-03' actual='2024-03-03'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Pay ZAR 25,256 today. This leaves at least ZAR 18,000 available over the next 90 days.
+request_02 | FAIL | reason: amount_safe_to_pay [|18336765.49-17229139.2|>861456.96]
+    affordability_status: expected='affordable_with_plan' actual='affordable_with_plan'
+    recommended_payment_method: expected='installments' actual='installments'
+    amount_safe_to_pay: expected='17229139.2' actual=18336765.49
+    payment_plan: expected='2025-08-08:15952906.67|2025-09-07:15952906.67|2025-10-07:15952906.67' actual='2025-08-08:15952906.67|2025-09-07:15952906.67|2025-10-07:15952906.67'
+    earliest_date_for_full_payment: expected='2025-09-15' actual='2025-09-15'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Use 3 installments of IDR 15,952,906.67, starting 2025-08-08. This leaves at least IDR 29,158,400 available.
+request_03 | FAIL | reason: affordability_status [exact]; recommended_payment_method [exact]; amount_safe_to_pay [|494366.36-873000.0|>43650.00]; payment_plan [0 entries != 1]; earliest_date_for_full_payment [exact]
+    affordability_status: expected='affordable_later' actual='not_affordable'
+    recommended_payment_method: expected='wait' actual='not_recommended'
+    amount_safe_to_pay: expected='873000' actual=494366.36
+    payment_plan: expected='2019-11-15:5491000' actual='none'
+    earliest_date_for_full_payment: expected='2019-11-15' actual='2019-11-30'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2019-11-15. None of the available options keeps the IDR 2,668,700 minimum protected.
+request_04 | FAIL | reason: amount_safe_to_pay [|10609286.07-8401800.0|>420090.00]
+    affordability_status: expected='affordable_later' actual='affordable_later'
+    recommended_payment_method: expected='wait' actual='wait'
+    amount_safe_to_pay: expected='8401800' actual=10609286.07
+    payment_plan: expected='2024-06-15:12693000' actual='2024-06-15:12693000'
+    earliest_date_for_full_payment: expected='2024-06-15' actual='2024-06-15'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Wait until 2024-06-15, then pay IDR 12,693,000 in full. Paying sooner would put the IDR 30,686,600 minimum at risk.
+request_05 | FAIL | reason: amount_safe_to_pay [|0.0-737.0|>36.85]
+    affordability_status: expected='not_affordable' actual='not_affordable'
+    recommended_payment_method: expected='not_recommended' actual='not_recommended'
+    amount_safe_to_pay: expected='737' actual=0.0
+    payment_plan: expected='none' actual='none'
+    earliest_date_for_full_payment: expected='' actual=''
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2026-01-12. None of the available options keeps the ZAR 13,100 minimum protected.
+request_06 | FAIL | reason: affordability_status [exact]; recommended_payment_method [exact]; amount_safe_to_pay [|550.8-603.3|>30.16]; payment_plan [0 entries != 1]; spending_changes_needed [exact]
+    affordability_status: expected='affordable_with_plan' actual='not_affordable'
+    recommended_payment_method: expected='full_payment' actual='not_recommended'
+    amount_safe_to_pay: expected='603.3' actual=550.8
+    payment_plan: expected='2026-01-03:620.40' actual='none'
+    earliest_date_for_full_payment: expected='2026-01-15' actual='2026-01-15'
+    spending_changes_needed: expected='stop:event_476' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2026-01-14. None of the available options keeps the EUR 800 minimum protected.
+request_07 | PASS | reason: all fields match
+    affordability_status: expected='affordable_with_plan' actual='affordable_with_plan'
+    recommended_payment_method: expected='installments' actual='installments'
+    amount_safe_to_pay: expected='87170.56' actual=86237.22
+    payment_plan: expected='2024-09-12:68432|2024-10-10:68432|2024-11-07:68432' actual='2024-09-12:68432|2024-10-10:68432|2024-11-07:68432'
+    earliest_date_for_full_payment: expected='2024-10-23' actual='2024-10-23'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Use 3 installments of INR 68,432, starting 2024-09-12. This leaves at least INR 93,000 available.
+request_08 | FAIL | reason: affordability_status [exact]; recommended_payment_method [exact]; payment_plan [0 entries != 1]; earliest_date_for_full_payment [exact]
+    affordability_status: expected='affordable_later' actual='not_affordable'
+    recommended_payment_method: expected='wait' actual='not_recommended'
+    amount_safe_to_pay: expected='284.57' actual=285.2
+    payment_plan: expected='2025-04-15:996.60' actual='none'
+    earliest_date_for_full_payment: expected='2025-04-15' actual=''
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2025-04-15. None of the available options keeps the EUR 800 minimum protected.
+request_09 | PASS | reason: all fields match
+    affordability_status: expected='affordable_now' actual='affordable_now'
+    recommended_payment_method: expected='full_payment' actual='full_payment'
+    amount_safe_to_pay: expected='166.61' actual=166.61
+    payment_plan: expected='2026-07-04:166.61' actual='2026-07-04:166.61'
+    earliest_date_for_full_payment: expected='2026-07-04' actual='2026-07-04'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Pay EUR 166.61 today. This leaves at least EUR 600 available over the next 90 days.
+request_10 | FAIL | reason: amount_safe_to_pay [|67906.45-12700.0|>635.00]
+    affordability_status: expected='not_affordable' actual='not_affordable'
+    recommended_payment_method: expected='not_recommended' actual='not_recommended'
+    amount_safe_to_pay: expected='12700' actual=67906.45
+    payment_plan: expected='none' actual='none'
+    earliest_date_for_full_payment: expected='' actual=''
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2025-02-10. None of the available options keeps the INR 225,400 minimum protected.
+request_11 | FAIL | reason: affordability_status [exact]; recommended_payment_method [exact]; payment_plan [date 2025-05-15 != 2025-05-03]; earliest_date_for_full_payment [exact]; spending_changes_needed [exact]
+    affordability_status: expected='affordable_with_plan' actual='affordable_later'
+    recommended_payment_method: expected='full_payment' actual='wait'
+    amount_safe_to_pay: expected='12510645' actual=12319866.62
+    payment_plan: expected='2025-05-03:13110000' actual='2025-05-15:13110000'
+    earliest_date_for_full_payment: expected='2025-07-15' actual='2025-05-15'
+    spending_changes_needed: expected='reduce_to:event_989:665950' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Wait until 2025-05-15, then pay IDR 13,110,000 in full. Paying sooner would put the IDR 34,140,600 minimum at risk.
+request_12 | FAIL | reason: amount_safe_to_pay [|60370.23-65164.0|>3258.20]; earliest_date_for_full_payment [exact]; spending_changes_needed [exact]
+    affordability_status: expected='affordable_with_plan' actual='affordable_with_plan'
+    recommended_payment_method: expected='installments' actual='installments'
+    amount_safe_to_pay: expected='65164' actual=60370.23
+    payment_plan: expected='2026-04-19:22590.19|2026-05-20:22590.19|2026-06-20:22590.19' actual='2026-04-19:22590.19|2026-05-20:22590.19|2026-06-20:22590.19'
+    earliest_date_for_full_payment: expected='2026-04-05' actual=''
+    spending_changes_needed: expected='none' actual='reduce_to:event_1054:1072.50'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Use 3 installments of ZAR 22,590.19, starting 2026-04-19. This leaves at least ZAR 43,200 available.
+request_13 | FAIL | reason: affordability_status [exact]; recommended_payment_method [exact]; amount_safe_to_pay [|490.78-433.4|>21.67]; payment_plan [0 entries != 1]; earliest_date_for_full_payment [exact]
+    affordability_status: expected='affordable_later' actual='not_affordable'
+    recommended_payment_method: expected='wait' actual='not_recommended'
+    amount_safe_to_pay: expected='433.4' actual=490.78
+    payment_plan: expected='2024-05-15:941.60' actual='none'
+    earliest_date_for_full_payment: expected='2024-05-15' actual=''
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2024-05-15. None of the available options keeps the EUR 1,300 minimum protected.
+request_14 | FAIL | reason: amount_safe_to_pay [|0.0-597.74|>29.89]
+    affordability_status: expected='not_affordable' actual='not_affordable'
+    recommended_payment_method: expected='not_recommended' actual='not_recommended'
+    amount_safe_to_pay: expected='597.74' actual=0.0
+    payment_plan: expected='none' actual='none'
+    earliest_date_for_full_payment: expected='' actual=''
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2025-10-04. None of the available options keeps the EUR 2,200 minimum protected.
+request_15 | FAIL | reason: amount_safe_to_pay [|5.08-83.05|>4.15]
+    affordability_status: expected='not_affordable' actual='not_affordable'
+    recommended_payment_method: expected='not_recommended' actual='not_recommended'
+    amount_safe_to_pay: expected='83.05' actual=5.08
+    payment_plan: expected='none' actual='none'
+    earliest_date_for_full_payment: expected='' actual=''
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2026-02-01. None of the available options keeps the EUR 1,200 minimum protected.
+request_16 | PASS | reason: all fields match
+    affordability_status: expected='affordable_now' actual='affordable_now'
+    recommended_payment_method: expected='full_payment' actual='full_payment'
+    amount_safe_to_pay: expected='122500' actual=122500.0
+    payment_plan: expected='2023-08-12:122500' actual='2023-08-12:122500'
+    earliest_date_for_full_payment: expected='2023-08-12' actual='2023-08-12'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Pay INR 122,500 today. This leaves at least INR 122,400 available over the next 90 days.
+request_17 | FAIL | reason: earliest_date_for_full_payment [exact]
+    affordability_status: expected='affordable_with_plan' actual='affordable_with_plan'
+    recommended_payment_method: expected='installments' actual='installments'
+    amount_safe_to_pay: expected='243849.58' actual=240640.31
+    payment_plan: expected='2026-03-01:95194.67|2026-03-31:95194.67|2026-04-30:95194.67' actual='2026-03-01:95194.67|2026-03-31:95194.67|2026-04-30:95194.67'
+    earliest_date_for_full_payment: expected='2026-03-15' actual='2026-04-15'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Use 3 installments of INR 95,194.67, starting 2026-03-01. This leaves at least INR 166,100 available.
+request_18 | FAIL | reason: amount_safe_to_pay [|546.05-462.0|>23.10]
+    affordability_status: expected='affordable_later' actual='affordable_later'
+    recommended_payment_method: expected='wait' actual='wait'
+    amount_safe_to_pay: expected='462' actual=546.05
+    payment_plan: expected='2026-09-15:3246.10' actual='2026-09-15:3246.10'
+    earliest_date_for_full_payment: expected='2026-09-15' actual='2026-09-15'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Wait until 2026-09-15, then pay EUR 3,246.10 in full. Paying sooner would put the EUR 1,400 minimum at risk.
+request_19 | FAIL | reason: payment_plan [amount 30022.77 != 28820.0]
+    affordability_status: expected='affordable_with_plan' actual='affordable_with_plan'
+    recommended_payment_method: expected='partial_payment' actual='partial_payment'
+    amount_safe_to_pay: expected='28820' actual=30022.77
+    payment_plan: expected='2024-09-04:28820|2024-09-15:10840' actual='2024-09-04:30022.77|2024-09-15:9637.23'
+    earliest_date_for_full_payment: expected='2024-09-15' actual='2024-09-15'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Pay INR 30,022.77 on 2024-09-04, then INR 9,637.23 on 2024-09-15. This leaves at least INR 92,800 available.
+request_20 | FAIL | reason: amount_safe_to_pay [|8969.68-5400.0|>270.00]
+    affordability_status: expected='not_affordable' actual='not_affordable'
+    recommended_payment_method: expected='not_recommended' actual='not_recommended'
+    amount_safe_to_pay: expected='5400' actual=8969.68
+    payment_plan: expected='none' actual='none'
+    earliest_date_for_full_payment: expected='' actual=''
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2026-02-22. None of the available options keeps the INR 64,500 minimum protected.
+request_21 | FAIL | reason: affordability_status [exact]; earliest_date_for_full_payment [exact]; spending_changes_needed [exact]
+    affordability_status: expected='affordable_with_plan' actual='affordable_now'
+    recommended_payment_method: expected='full_payment' actual='full_payment'
+    amount_safe_to_pay: expected='1543.35' actual=1574.4
+    payment_plan: expected='2026-04-03:1574.40' actual='2026-04-03:1574.40'
+    earliest_date_for_full_payment: expected='2026-04-15' actual='2026-04-03'
+    spending_changes_needed: expected='stop:event_1815|reduce_to:event_1816:23.50' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Pay USD 1,574.40 today. This leaves at least USD 1,800 available over the next 90 days.
+request_22 | PASS | reason: all fields match
+    affordability_status: expected='affordable_with_plan' actual='affordable_with_plan'
+    recommended_payment_method: expected='installments' actual='installments'
+    amount_safe_to_pay: expected='475.46' actual=464.62
+    payment_plan: expected='2024-12-08:253.59|2025-01-05:253.59|2025-02-02:253.59' actual='2024-12-08:253.59|2025-01-05:253.59|2025-02-02:253.59'
+    earliest_date_for_full_payment: expected='2025-01-15' actual='2025-01-15'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Use 3 installments of EUR 253.59, starting 2024-12-08. This leaves at least EUR 500 available.
+request_23 | FAIL | reason: amount_safe_to_pay [|8360.17-9152.0|>457.60]
+    affordability_status: expected='affordable_later' actual='affordable_later'
+    recommended_payment_method: expected='wait' actual='wait'
+    amount_safe_to_pay: expected='9152' actual=8360.17
+    payment_plan: expected='2025-07-15:38016' actual='2025-07-15:38016'
+    earliest_date_for_full_payment: expected='2025-07-15' actual='2025-07-15'
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Wait until 2025-07-15, then pay ZAR 38,016 in full. Paying sooner would put the ZAR 27,000 minimum at risk.
+request_24 | FAIL | reason: amount_safe_to_pay [|0.0-13420.0|>671.00]
+    affordability_status: expected='not_affordable' actual='not_affordable'
+    recommended_payment_method: expected='not_recommended' actual='not_recommended'
+    amount_safe_to_pay: expected='13420' actual=0.0
+    payment_plan: expected='none' actual='none'
+    earliest_date_for_full_payment: expected='' actual=''
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2026-02-08. None of the available options keeps the INR 51,000 minimum protected.
+request_25 | FAIL | reason: amount_safe_to_pay [|376083.4-1425000.0|>71250.00]
+    affordability_status: expected='not_affordable' actual='not_affordable'
+    recommended_payment_method: expected='not_recommended' actual='not_recommended'
+    amount_safe_to_pay: expected='1425000' actual=376083.4
+    payment_plan: expected='none' actual='none'
+    earliest_date_for_full_payment: expected='' actual=''
+    spending_changes_needed: expected='none' actual='none'
+    decision_explanation: valid=True (grounded)
+    actual explanation: Do not make this payment by 2024-04-17. None of the available options keeps the IDR 23,379,100 minimum protected.
+
+SUMMARY
+Overall: 5/25 (20%)
+  affordability_status: 19/25 (76%)
+  recommended_payment_method: 20/25 (80%)
+  amount_safe_to_pay: 10/25 (40%)
+  payment_plan: 19/25 (76%)
+  earliest_date_for_full_payment: 18/25 (72%)
+  spending_changes_needed: 21/25 (84%)
+  decision_explanation valid: 25/25 (100%) (validity only, not exact match)
