@@ -1,7 +1,9 @@
 # Token Usage and Cost Report — Final Full-Dataset Run
 
-Run: `python3 code/main.py`  
-Result: 250/250 requests processed and written to `output.csv`.
+Run: `python3 code/main.py` (from the repository root)  
+Result: **all 250 requests** in `dataset/requests.csv` processed and written
+to `output.csv` (250/250 rows, one per request). This is the final run that
+produced the submitted `output.csv`.
 
 ## Engine
 
@@ -18,10 +20,10 @@ tokens.
 
 ## Model Providers and Names
 
-| Component | Provider | Model | Calls |
+| Component | Provider | Model | Calls (final 250-request run) |
 |---|---|---|---:|
 | Financial state, forecast, message actions, decision engine | None (local) | N/A | 0 |
-| Photo OCR | None (local) | PP-OCRv4 detection + recognition + orientation classifier | 11 image reads |
+| Photo OCR (local, non-API: no network, no tokens, no cost) | None (local) | PP-OCRv4 detection + recognition + orientation classifier | 11 image reads |
 
 The OCR model is vendored under `code/ocr_models/` and uses
 `rapidocr-onnxruntime==1.4.4`. OCR results are cached by file hash.
@@ -41,8 +43,8 @@ The OCR model is vendored under `code/ocr_models/` and uses
 
 ## Local Compute
 
-- Final 250-request run: ~1 second with warm OCR cache.
-- 11 requests required image OCR.
-- OCR results are cached and reused on subsequent runs.
+- Final 250-request run: ~2 seconds with warm OCR cache; 250/250 rows valid.
+- 11 of the 250 requests required image OCR (local ONNX inference on CPU).
+- OCR results are cached by file hash and reused on subsequent runs.
 - Re-running the final dataset produces byte-identical decisions.
 - No API keys, credentials, or sensitive configuration are included.
