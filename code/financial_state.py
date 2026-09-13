@@ -246,7 +246,7 @@ def _salary_keywords_ok(raw):
     if "salary" not in text and "payroll" not in text:
         return False
     for bad in ("arrears", "adjustment", "bonus", "back pay", "backpay", "one-time", "one time",
-                "reversal"):
+                "reversal", "commission", "komisi", "performance", "incentive"):
         if bad in text:
             return False
     return True

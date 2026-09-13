@@ -86,14 +86,18 @@ SALARY_END_KEYWORDS = (
 )
 
 
-def project_salary(state, start, end):
+def project_salary(state, start, end, salary_override=None, stop=False):
     """Project base salary monthly. Returns (flows, assumptions).
 
     Amount: latest scheduled regular salary if present, else latest settled
     regular salary. Anchor: latest known salary date. Already-counted
     scheduled salary dates are skipped to avoid double counting.
     A latest salary marked as final/terminal stops all projection.
+    salary_override {"amount", "from_date"}: projections on/after from_date
+    use the new amount. stop=True: no projection at all.
     """
+    if stop:
+        return [], ["salary stopped by message amendment: no salary projected"]
     sched = state.get("scheduled_salary", []) or []
     hist = state.get("salary_history", []) or []
     latest = sched[-1] if sched else (hist[-1] if hist else None)
@@ -103,6 +107,14 @@ def project_salary(state, start, end):
         return [], [f"salary ended ({latest.get('description')} on "
                     f"{latest.get('settlement_date')}): no salary projected"]
     amount = latest["converted_amount"]
+    notes = []
+    if salary_override:
+        from_date = _parse(salary_override.get("from_date"))
+        new_amount = float(salary_override.get("amount"))
+        notes.append(f"message salary override: {new_amount} from "
+                     f"{salary_override.get('from_date')}")
+    else:
+        from_date, new_amount = None, None
     known = {_parse(x["settlement_date"]) for x in sched + hist if x.get("settlement_date")}
     known = {d for d in known if d}
     anchor = max(known) if known else start
@@ -112,10 +124,11 @@ def project_salary(state, start, end):
     n = 0
     while d <= end:
         if d >= start and d not in known:
-            flows.append((d, +round(amount, 2), "recurring:salary", None))
+            amt = new_amount if (from_date and d >= from_date) else amount
+            flows.append((d, +round(amt, 2), "recurring:salary", None))
             n += 1
         d = _add_months(d, 1)
-    return flows, [f"projected salary: monthly at {round(amount, 2)} x{n}"]
+    return flows, [f"projected salary: monthly at {round(amount, 2)} x{n}"] + notes
 
 
 def collect_message_adjustments(state):
@@ -140,8 +153,17 @@ def collect_message_adjustments(state):
     return [], notes
 
 
-def build_baseline_forecast(state, horizon_days=FORECAST_DAYS):
-    """Simulate baseline balances. Returns forecast dict."""
+def build_baseline_forecast(state, horizon_days=FORECAST_DAYS, adjustments=None):
+    """Simulate baseline balances. Returns forecast dict.
+
+    adjustments: optional dict from message_actions.build_adjustments
+    (moved_dates, exclude_event_ids, extra_flows, scales, salary_override,
+    stop_salary, notes). None = pure events baseline.
+    """
+    adj = adjustments or {}
+    moved = adj.get("moved_dates", {}) or {}
+    excluded_ids = adj.get("exclude_event_ids", set()) or set()
+    scales = adj.get("scales", {}) or {}
     start = _parse(state["request_date"])
     end = start + timedelta(days=horizon_days)
     opening = float(state["profile"]["current_available_balance"])
@@ -149,23 +171,51 @@ def build_baseline_forecast(state, horizon_days=FORECAST_DAYS):
 
     dated = []  # (date, signed, label, ref)
 
-    for c in state.get("reserved_pending_debits", []):
+    def _eff_date(c):
         d = _parse(c["settlement_date"])
-        if d and start <= d <= end:
-            dated.append((d, -c["converted_amount"], f"reserved:{c['category']}", c["event_id"]))
-    for c in state.get("scheduled_obligations", []):
-        d = _parse(c["settlement_date"])
-        if d and start <= d <= end:
-            dated.append((d, -c["converted_amount"], f"scheduled:{c['category']}", c["event_id"]))
-    for c in state.get("confirmed_future_credits", []):
-        d = _parse(c["settlement_date"])
-        if d and start <= d <= end:
-            dated.append((d, +c["converted_amount"], f"salary:{c['category']}", c["event_id"]))
+        new = moved.get(c["event_id"])
+        return _parse(new) if new else d
+
+    for key, sign, kind in (("reserved_pending_debits", -1, "reserved"),
+                            ("scheduled_obligations", -1, "scheduled"),
+                            ("confirmed_future_credits", +1, "salary")):
+        for c in state.get(key, []) or []:
+            if c["event_id"] in excluded_ids:
+                continue
+            d = _eff_date(c)
+            if d and start <= d <= end:
+                amt = c["converted_amount"]
+                if kind == "salary" and adj.get("salary_override"):
+                    ov = adj["salary_override"]
+                    if d >= _parse(ov.get("from_date")):
+                        amt = float(ov.get("amount"))
+                dated.append((d, sign * amt,
+                              f"{kind}:{c['category']}", c["event_id"]))
 
     rec_flows, rec_notes = project_recurring(state, start, end)
+    for cat, factor in scales.items():
+        rec_flows = [(d, round(a * factor, 2), lbl, ref)
+                     if lbl == f"recurring:{cat}" else (d, a, lbl, ref)
+                     for d, a, lbl, ref in rec_flows]
+        rec_notes.append(f"scaled {cat} x{factor} by message amendment")
     dated.extend(rec_flows)
-    sal_flows, sal_notes = project_salary(state, start, end)
+    sal_flows, sal_notes = project_salary(
+        state, start, end,
+        salary_override=adj.get("salary_override"),
+        stop=bool(adj.get("stop_salary")))
     dated.extend(sal_flows)
+    for ef in adj.get("extra_flows", []) or []:
+        d0 = _parse(ef.get("date"))
+        if not d0:
+            continue
+        if ef.get("monthly"):
+            d = d0
+            while d <= end:
+                if d >= start:
+                    dated.append((d, ef["amount"], ef.get("label", "msg"), None))
+                d = _add_months(d, 1)
+        elif start <= d0 <= end:
+            dated.append((d0, ef["amount"], ef.get("label", "msg"), None))
     msg_flows, msg_notes = collect_message_adjustments(state)
     dated.extend(msg_flows)
 
@@ -208,7 +258,7 @@ def build_baseline_forecast(state, horizon_days=FORECAST_DAYS):
         "baseline_safe": first_breach is None,
         "first_breach_date": first_breach,
         "flows_used": flows_used,
-        "assumptions": rec_notes + sal_notes + msg_notes + [
+        "assumptions": rec_notes + sal_notes + msg_notes + list(adj.get("notes", []) or []) + [
             f"excluded {state['counts']['excluded']} failed/cancelled/unrealized/pending-credit rows",
             f"blank amounts excluded: {state['counts']['blank_amount']}",
         ],
